@@ -78,6 +78,7 @@ contract Escrow is IEscrow, Ownable {
         displayedOffer.name = name;
         displayedOffer.available = true;
         _saveBundle(displayedOffer.bundle, bundle);
+        _transferBundle(msg.sender, address(this), bundle);
         emit OfferDisplayed(displayedOfferId.toString(), maker, name, bundle);
     }
 
@@ -91,6 +92,7 @@ contract Escrow is IEscrow, Ownable {
         definedOffer.available = true;
         definedOffer.displayedOfferId = displayedOfferId;
         _saveBundle(definedOffer.bundle, bundle);
+        _transferBundle(msg.sender, address(this), bundle);
         emit OfferDefined(displayedOfferId.toString(), definedOfferId.toString(), maker, name, bundle);
     }
 
@@ -99,6 +101,7 @@ contract Escrow is IEscrow, Ownable {
         require(msg.sender == displayedOffer.maker, "Can only remove own displayed offers");
         require(displayedOffer.available, "Displayed offer is already inactive.");
         displayedOffer.available = false;
+        _transferBundle(address(this), msg.sender, displayedOffer.bundle);
         emit DisplayedOfferCancelled(displayedOfferId.toString());
     }
 
@@ -107,6 +110,7 @@ contract Escrow is IEscrow, Ownable {
         require(msg.sender == definedOffer.maker, "Can only remove own defined offers");
         require(definedOffer.available, "Defined offer is already inactive.");
         definedOffer.available = false;
+        _transferBundle(address(this), msg.sender, definedOffer.bundle);
         emit DefinedOfferCancelled(definedOfferId.toString());
     }
 
@@ -122,25 +126,25 @@ contract Escrow is IEscrow, Ownable {
         require(definedOffer.displayedOfferId == displayedOfferId, "The offerer did not specify your displayed offer as the taker.");
         definedOffer.available = false;
 
-        _transferBundle(displayedOffer.maker, definedOffer.maker, displayedOffer.bundle);
-        _transferBundle(definedOffer.maker, displayedOffer.maker, definedOffer.bundle);
+        _transferBundle(address(this), definedOffer.maker, displayedOffer.bundle);
+        _transferBundle(address(this), displayedOffer.maker, definedOffer.bundle);
 
         emit OfferAccepted(displayedOfferId.toString(), definedOfferId.toString());
 
     }
 
-    function _transferBundle(address from, address to, Bundle storage bundle) private {
+    function _transferBundle(address from, address to, Bundle memory bundle) private {
 
-        Nft[] storage nfts = bundle.nfts;
-        Pouch[] storage pouches = bundle.pouches;
+        Nft[] memory nfts = bundle.nfts;
+        Pouch[] memory pouches = bundle.pouches;
 
         for(uint i; i < nfts.length; i ++) {
-            Nft storage nft = nfts[i];
+            Nft memory nft = nfts[i];
             _transferNftFrom(nft.cAddr, from, to, nft.tokenId);
         }
 
         for(uint i; i < pouches.length; i ++) {
-            Pouch storage pouch = pouches[i];
+            Pouch memory pouch = pouches[i];
             IERC20(pouch.cAddr).safeTransferFrom(from, to, pouch.value);
         }
 
