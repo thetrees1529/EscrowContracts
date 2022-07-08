@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IEscrow {
 
@@ -62,7 +63,7 @@ interface IEscrow {
 
 }
 
-contract Escrow is IEscrow, Ownable {
+contract Escrow is IEscrow, Ownable, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
     using Strings for uint; 
@@ -70,7 +71,7 @@ contract Escrow is IEscrow, Ownable {
     DefinedOffer[] public definedOffers;
     DisplayedOffer[] public displayedOffers;
 
-    function displayOffer(string calldata name, Bundle calldata bundle) external {
+    function displayOffer(string calldata name, Bundle calldata bundle) external nonReentrant {
         address maker = msg.sender;
         uint displayedOfferId = displayedOffers.length;
         DisplayedOffer storage displayedOffer = displayedOffers.push();
@@ -82,7 +83,7 @@ contract Escrow is IEscrow, Ownable {
         emit OfferDisplayed(displayedOfferId.toString(), maker, name, bundle);
     }
 
-    function defineOffer(string calldata name, uint displayedOfferId, Bundle calldata bundle) external {
+    function defineOffer(string calldata name, uint displayedOfferId, Bundle calldata bundle) external nonReentrant {
         require(displayedOfferId < displayedOffers.length, "Cannot make defined offer on non existent displayed offer");
         address maker = msg.sender;
         uint definedOfferId = definedOffers.length;
@@ -96,7 +97,7 @@ contract Escrow is IEscrow, Ownable {
         emit OfferDefined(displayedOfferId.toString(), definedOfferId.toString(), maker, name, bundle);
     }
 
-    function cancelDisplayedOffer(uint displayedOfferId) external {
+    function cancelDisplayedOffer(uint displayedOfferId) external nonReentrant {
         DisplayedOffer storage displayedOffer = displayedOffers[displayedOfferId];
         require(msg.sender == displayedOffer.maker, "Can only remove own displayed offers");
         require(displayedOffer.available, "Displayed offer is already inactive.");
@@ -105,7 +106,7 @@ contract Escrow is IEscrow, Ownable {
         emit DisplayedOfferCancelled(displayedOfferId.toString());
     }
 
-    function cancelDefinedOffer(uint definedOfferId) external {
+    function cancelDefinedOffer(uint definedOfferId) external nonReentrant {
         DefinedOffer storage definedOffer = definedOffers[definedOfferId];
         require(msg.sender == definedOffer.maker, "Can only remove own defined offers");
         require(definedOffer.available, "Defined offer is already inactive.");
@@ -114,7 +115,7 @@ contract Escrow is IEscrow, Ownable {
         emit DefinedOfferCancelled(definedOfferId.toString());
     }
 
-    function acceptOffer(uint displayedOfferId, uint definedOfferId) external {
+    function acceptOffer(uint displayedOfferId, uint definedOfferId) external nonReentrant {
 
         DisplayedOffer storage displayedOffer = displayedOffers[displayedOfferId];
         require(msg.sender == displayedOffer.maker, "Can only manage own displayed offers");
